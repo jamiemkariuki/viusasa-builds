@@ -1,4 +1,4 @@
-name: Build Desktop Apps (Mirror)
+name: Build Desktop Apps
 
 on:
   workflow_dispatch:
@@ -15,8 +15,6 @@ on:
         options:
           - 'true'
           - 'false'
-  repository_dispatch:
-    types: [trigger-build]
 
 env:
   PRIVATE_REPO_URL: git@github.com:jamiemkariuki/viusasa-desktop-app.git
@@ -24,170 +22,110 @@ env:
 jobs:
   build-windows:
     runs-on: windows-latest
-    timeout-minutes: 30
-
     steps:
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
-
       - name: Clone Private Repo
+        shell: bash
         run: |
           git clone ${{ env.PRIVATE_REPO_URL }} .
           git checkout ${{ github.event.inputs.version || 'main' }}
-          echo "Files in workspace:"
-          ls -la
-          echo "package-lock.json exists:"
-          test -f package-lock.json && echo "YES" || echo "NO"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install Dependencies
         run: npm install
-
-      - name: Build Windows App
-        run: npm run build:win
-        env:
-          PUBLISH: never
-
+      - name: Build Windows
+        run: npm run build:win -- --publish never
       - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4
         with:
           name: viusasa-windows-x64
           path: dist/*.zip
-          if-no-files-found: warn
-
       - name: Upload Windows MSI
         uses: actions/upload-artifact@v4
         with:
           name: viusasa-windows-installer
           path: dist/*.msi
-          if-no-files-found: warn
 
   build-macos:
     runs-on: macos-latest
-    timeout-minutes: 30
-
     steps:
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
-
       - name: Clone Private Repo
+        shell: bash
         run: |
           git clone ${{ env.PRIVATE_REPO_URL }} .
           git checkout ${{ github.event.inputs.version || 'main' }}
-          echo "Files in workspace:"
-          ls -la
-          echo "package-lock.json exists:"
-          test -f package-lock.json && echo "YES" || echo "NO"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install Dependencies
         run: npm install
-
-      - name: Build macOS App
-        run: npm run build:mac
+      - name: Build macOS
+        run: npm run build:mac -- --publish never
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
-          PUBLISH: never
-
-      - name: Remove Quarantine Attributes
+      - name: Remove Quarantine
         run: |
-          if [ -d "dist/mac/Viusasa.app" ]; then
-            xattr -cr dist/mac/Viusasa.app 2>/dev/null || true
-          fi
-          if [ -d "dist/mac-arm64/Viusasa.app" ]; then
-            xattr -cr dist/mac-arm64/Viusasa.app 2>/dev/null || true
-          fi
-
-      - name: List Build Output
-        run: ls -la dist/
-
+          [ -d "dist/mac/Viusasa.app" ] && xattr -cr dist/mac/Viusasa.app 2>/dev/null || true
+          [ -d "dist/mac-arm64/Viusasa.app" ] && xattr -cr dist/mac-arm64/Viusasa.app 2>/dev/null || true
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
         with:
           name: viusasa-macos
           path: dist/*.dmg
-          if-no-files-found: warn
-
       - name: Upload macOS ZIP
         uses: actions/upload-artifact@v4
         with:
           name: viusasa-macos-zip
           path: dist/*-mac.zip
-          if-no-files-found: warn
 
   build-linux:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
     steps:
       - name: Setup SSH Key
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
-
       - name: Clone Private Repo
+        shell: bash
         run: |
           git clone ${{ env.PRIVATE_REPO_URL }} .
           git checkout ${{ github.event.inputs.version || 'main' }}
-          echo "Files in workspace:"
-          ls -la
-          echo "package-lock.json exists:"
-          test -f package-lock.json && echo "YES" || echo "NO"
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install Dependencies
         run: npm install
-
-      - name: Build Linux App
-        run: npm run build:linux
-        env:
-          PUBLISH: never
-
+      - name: Build Linux
+        run: npm run build:linux -- --publish never
       - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
         with:
           name: viusasa-linux
           path: dist/*.AppImage
-          if-no-files-found: warn
 
   create-release:
     needs: [build-windows, build-macos, build-linux]
-    runs-on: ubuntu-latest
     if: github.event.inputs.create_release == 'true'
-    timeout-minutes: 10
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Public Repo
+      - name: Checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Download All Artifacts
+      - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-
-      - name: List Downloaded Artifacts
-        run: find artifacts -type f
-
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.version || 'v1.0.0' }}
@@ -203,7 +141,3 @@ jobs:
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Cleanup Artifacts
-        if: always()
-        run: rm -rf artifacts
