@@ -15,7 +15,7 @@ Download the latest version from the **[Releases](https://github.com/jamiemkariu
 | **Windows** | `Viusasa-*.msi` | x64 |
 | **Windows (Portable)** | `Viusasa-*.zip` | x64 |
 | **macOS** | `Viusasa-*.dmg` | Universal (Intel + Apple Silicon) |
-| **macOS (Portable)** | `Viusasa-*-mac.zip` | Universal |
+| **macOS (Portable)** | `Viusasa-*.zip` | Universal |
 | **Linux** | `Viusasa-*.AppImage` | x64 |
 
 ## 🚀 Installation
@@ -68,31 +68,25 @@ chmod +x Viusasa-*.AppImage
 
 - 🌐 Browse [viusasa.com](https://viusasa.com/) in a dedicated desktop window
 - 🎨 Custom red & black themed scrollbars
-- 📱 Vertical video player for phone-format videos
-- 🖥️ Cross-platform support (Windows, macOS, Linux)
-- 🔄 Auto-updates via GitHub Releases
+- 🧭 Built-in navigation (Back, Forward, Home)
+- 🖥️ Frameless window with custom title bar
+- 🔲 Window controls (Minimize, Maximize, Close)
 
 ## 🎮 Usage
 
-### Main Window
-- The app loads viusasa.com in a full desktop browser window
-- Custom red/black scrollbars for a themed experience
+### Navigation Bar
+- **← Back**: Go to previous page
+- **→ Forward**: Go to next page
+- **🏠 Home**: Return to viusasa.com
 
-### Video Player
-Press **`Ctrl+Shift+V`** (or `Cmd+Shift+V` on Mac) to open the vertical video player.
+### Window Controls
+- **➖ Minimize**: Minimize window
+- **⬜ Maximize**: Maximize/Restore window
+- **❌ Close**: Close the app
 
-**Keyboard Shortcuts:**
-| Key | Action |
-|-----|--------|
-| `Space` / `K` | Play/Pause |
-| `F` | Fullscreen |
-| `M` | Mute |
-| `↑` / `↓` | Volume Up/Down |
-| `←` / `→` | Seek -5s / +5s |
+## 🔧 Automated Builds
 
-## 🔧 Development
-
-Builds are automated via GitHub Actions. Every push to the main branch triggers builds for all platforms.
+Builds are automated via GitHub Actions. Every push to the main branch of the source repo triggers builds for all platforms.
 
 ### Build Status
 
@@ -103,7 +97,7 @@ Builds are automated via GitHub Actions. Every push to the main branch triggers 
 1. Go to [Actions](https://github.com/jamiemkariuki/viusasa-builds/actions)
 2. Select **Build Desktop Apps**
 3. Click **Run workflow**
-4. Enter version tag (e.g., `v1.0.0`)
+4. Enter version tag (e.g., `v1.0.2`) or leave as `main`
 5. Click **Run workflow**
 
 ## 📝 License
@@ -112,6 +106,6 @@ ISC
 
 ## 🔗 Links
 
-- **Source Code:** [Private Repository](https://github.com/jamiemkariuki/viusasa-desktop-app)
-- **Website:** [viusasa.com](https://viusasa.com/)
-- **Issues:** [Report a Bug](https://github.com/jamiemkariuki/viusasa-builds/issues)
+- **Source Code**: [viusasa-desktop-app](https://github.com/jamiemkariuki/viusasa-desktop-app)
+- **Website**: [viusasa.com](https://viusasa.com/)
+- **Issues**: [Report a Bug](https://github.com/jamiemkariuki/viusasa-builds/issues)
