@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version tag (e.g., v1.0.0)'
-        required: true
-        default: 'v1.0.0'
+        description: 'Version tag (e.g., v1.0.3)'
+        required: false
+        default: ''
       create_release:
         description: 'Create GitHub Release'
         required: true
@@ -15,36 +15,50 @@ on:
         options:
           - 'true'
           - 'false'
+  push:
+    tags:
+      - 'v*'
 
 env:
-  PRIVATE_REPO_URL: git@github.com:jamiemkariuki/viusasa-desktop-app.git
+  PRIVATE_REPO_URL: https://github.com/jamiemkariuki/viusasa-desktop-app.git
+
+permissions:
+  contents: write
 
 jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - name: Setup SSH Key
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Checkout Private Repo
+        uses: actions/checkout@v4
         with:
-          ssh-private-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
-      - name: Clone Private Repo
-        shell: bash
+          repository: jamiemkariuki/viusasa-desktop-app
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      
+      - name: Show Version Info
         run: |
-          git clone ${{ env.PRIVATE_REPO_URL }} .
-          git checkout ${{ github.event.inputs.version || 'main' }}
+          echo "Building ref: ${{ github.ref_name }}"
+          echo "Package version: $(node -p "require('./package.json').version")"
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      
       - name: Install Dependencies
         run: npm install
+      
       - name: Build Windows
         run: npm run build:win -- --publish never
+      
       - name: Upload Windows ZIP
         uses: actions/upload-artifact@v4
         with:
           name: viusasa-windows-x64
           path: dist/*.zip
+      
       - name: Upload Windows MSI
         uses: actions/upload-artifact@v4
         with:
@@ -54,60 +68,76 @@ jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-      - name: Setup SSH Key
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Checkout Private Repo
+        uses: actions/checkout@v4
         with:
-          ssh-private-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
-      - name: Clone Private Repo
-        shell: bash
+          repository: jamiemkariuki/viusasa-desktop-app
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      
+      - name: Show Version Info
         run: |
-          git clone ${{ env.PRIVATE_REPO_URL }} .
-          git checkout ${{ github.event.inputs.version || 'main' }}
+          echo "Building ref: ${{ github.ref_name }}"
+          echo "Package version: $(node -p "require('./package.json').version")"
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      
       - name: Install Dependencies
         run: npm install
+      
       - name: Build macOS
         run: npm run build:mac -- --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      
       - name: Remove Quarantine
         run: |
           [ -d "dist/mac/Viusasa.app" ] && xattr -cr dist/mac/Viusasa.app 2>/dev/null || true
           [ -d "dist/mac-arm64/Viusasa.app" ] && xattr -cr dist/mac-arm64/Viusasa.app 2>/dev/null || true
+      
       - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
         with:
           name: viusasa-macos
           path: dist/*.dmg
+      
       - name: Upload macOS ZIP
         uses: actions/upload-artifact@v4
         with:
           name: viusasa-macos-zip
-          path: dist/*-mac.zip
+          path: dist/*.zip
 
   build-linux:
     runs-on: ubuntu-latest
     steps:
-      - name: Setup SSH Key
-        uses: webfactory/ssh-agent@v0.9.0
+      - name: Checkout Private Repo
+        uses: actions/checkout@v4
         with:
-          ssh-private-key: ${{ secrets.PRIVATE_REPO_SSH_KEY }}
-      - name: Clone Private Repo
-        shell: bash
+          repository: jamiemkariuki/viusasa-desktop-app
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          ref: ${{ github.ref_name }}
+          fetch-depth: 0
+      
+      - name: Show Version Info
         run: |
-          git clone ${{ env.PRIVATE_REPO_URL }} .
-          git checkout ${{ github.event.inputs.version || 'main' }}
+          echo "Building ref: ${{ github.ref_name }}"
+          echo "Package version: $(node -p "require('./package.json').version")"
+      
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      
       - name: Install Dependencies
         run: npm install
+      
       - name: Build Linux
         run: npm run build:linux -- --publish never
+      
       - name: Upload Linux AppImage
         uses: actions/upload-artifact@v4
         with:
@@ -116,25 +146,25 @@ jobs:
 
   create-release:
     needs: [build-windows, build-macos, build-linux]
-    if: github.event.inputs.create_release == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
       - name: Download Artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+      
+      - name: List artifacts
+        run: find artifacts -type f
+      
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.event.inputs.version || 'v1.0.0' }}
-          name: Release ${{ github.event.inputs.version || 'v1.0.0' }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           files: |
             artifacts/viusasa-windows-x64/*.zip
             artifacts/viusasa-windows-installer/*.msi
             artifacts/viusasa-macos/*.dmg
-            artifacts/viusasa-macos/*.zip
             artifacts/viusasa-macos-zip/*.zip
             artifacts/viusasa-linux/*.AppImage
           generate_release_notes: true
