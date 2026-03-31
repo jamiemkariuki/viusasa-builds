@@ -2,31 +2,47 @@ name: Build Desktop Apps
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (e.g., v1.0.3)'
-        required: false
-        default: ''
-      create_release:
-        description: 'Create GitHub Release'
-        required: true
-        default: 'true'
-        type: choice
-        options:
-          - 'true'
-          - 'false'
+  repository_dispatch:
+    types: [trigger-build]
   push:
     tags:
       - 'v*'
 
 env:
   PRIVATE_REPO_URL: https://github.com/jamiemkariuki/viusasa-desktop-app.git
+  CHECKOUT_REF: ${{ github.event.client_payload.version || github.ref_name }}
 
 permissions:
   contents: write
 
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+    steps:
+      - name: Checkout Private Repo
+        uses: actions/checkout@v4
+        with:
+          repository: jamiemkariuki/viusasa-desktop-app
+          token: ${{ secrets.PRIVATE_REPO_PAT }}
+          ref: ${{ env.CHECKOUT_REF }}
+          fetch-depth: 0
+      
+      - name: Determine Version
+        id: version
+        run: |
+          if [ -n "${{ github.event.client_payload.version }}" ]; then
+            echo "VERSION=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == *refs/tags/* ]]; then
+            echo "VERSION=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            PKG_VER=$(node -e "console.log(require('./package.json').version)")
+            echo "VERSION=v${PKG_VER}" >> $GITHUB_OUTPUT
+          fi
+
   build-windows:
+    needs: prepare
     runs-on: windows-latest
     steps:
       - name: Checkout Private Repo
@@ -34,13 +50,13 @@ jobs:
         with:
           repository: jamiemkariuki/viusasa-desktop-app
           token: ${{ secrets.PRIVATE_REPO_PAT }}
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.CHECKOUT_REF }}
           fetch-depth: 0
       
       - name: Show Version Info
         run: |
-          echo "Building ref: ${{ github.ref_name }}"
-          echo "Package version: $(node -p "require('./package.json').version")"
+          echo "Building version: ${{ needs.prepare.outputs.version }} (from ref: ${{ env.CHECKOUT_REF }})"
+          echo "Package version: $(node -e "console.log(require('./package.json').version)")"
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -66,6 +82,7 @@ jobs:
           path: dist/*.msi
 
   build-macos:
+    needs: prepare
     runs-on: macos-latest
     steps:
       - name: Checkout Private Repo
@@ -73,13 +90,13 @@ jobs:
         with:
           repository: jamiemkariuki/viusasa-desktop-app
           token: ${{ secrets.PRIVATE_REPO_PAT }}
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.CHECKOUT_REF }}
           fetch-depth: 0
       
       - name: Show Version Info
         run: |
-          echo "Building ref: ${{ github.ref_name }}"
-          echo "Package version: $(node -p "require('./package.json').version")"
+          echo "Building version: ${{ needs.prepare.outputs.version }} (from ref: ${{ env.CHECKOUT_REF }})"
+          echo "Package version: $(node -e "console.log(require('./package.json').version)")"
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -112,6 +129,7 @@ jobs:
           path: dist/*.zip
 
   build-linux:
+    needs: prepare
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Private Repo
@@ -119,13 +137,13 @@ jobs:
         with:
           repository: jamiemkariuki/viusasa-desktop-app
           token: ${{ secrets.PRIVATE_REPO_PAT }}
-          ref: ${{ github.ref_name }}
+          ref: ${{ env.CHECKOUT_REF }}
           fetch-depth: 0
       
       - name: Show Version Info
         run: |
-          echo "Building ref: ${{ github.ref_name }}"
-          echo "Package version: $(node -p "require('./package.json').version")"
+          echo "Building version: ${{ needs.prepare.outputs.version }} (from ref: ${{ env.CHECKOUT_REF }})"
+          echo "Package version: $(node -e "console.log(require('./package.json').version)")"
       
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -145,7 +163,7 @@ jobs:
           path: dist/*.AppImage
 
   create-release:
-    needs: [build-windows, build-macos, build-linux]
+    needs: [prepare, build-windows, build-macos, build-linux]
     runs-on: ubuntu-latest
     steps:
       - name: Download Artifacts
@@ -159,8 +177,8 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          tag_name: ${{ needs.prepare.outputs.version }}
+          name: Release ${{ needs.prepare.outputs.version }}
           files: |
             artifacts/viusasa-windows-x64/*.zip
             artifacts/viusasa-windows-installer/*.msi
