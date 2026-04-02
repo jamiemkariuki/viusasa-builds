@@ -2,6 +2,11 @@ name: Build Desktop Apps
 
 on:
   workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to build (e.g., v1.0.7)'
+        required: false
+        default: ''
   repository_dispatch:
     types: [trigger-build]
   push:
@@ -10,7 +15,7 @@ on:
 
 env:
   PRIVATE_REPO_URL: https://github.com/jamiemkariuki/viusasa-desktop-app.git
-  CHECKOUT_REF: ${{ github.event.client_payload.version || github.ref_name }}
+  CHECKOUT_REF: ${{ github.event.inputs.version || github.event.client_payload.version || github.ref_name }}
 
 permissions:
   contents: write
@@ -32,7 +37,9 @@ jobs:
       - name: Determine Version
         id: version
         run: |
-          if [ -n "${{ github.event.client_payload.version }}" ]; then
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.event.client_payload.version }}" ]; then
             echo "VERSION=${{ github.event.client_payload.version }}" >> $GITHUB_OUTPUT
           elif [[ "${{ github.ref }}" == *refs/tags/* ]]; then
             echo "VERSION=${{ github.ref_name }}" >> $GITHUB_OUTPUT
